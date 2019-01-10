@@ -1,0 +1,1 @@
+How I obtained a subset of 5,000 respondents from the [2017 Sexuality IAT](https://osf.io/ctqxo/) data archived from [Project Implicit](https://implicit.harvard.edu/implicit/). This data is used in tutorials posted on my [website](https://jamesrrae.com).

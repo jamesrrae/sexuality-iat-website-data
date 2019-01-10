@@ -1,0 +1,95 @@
+---
+title: "Subsetting 2017 Sexuality IAT Data"
+author:
+- "James R. Rae"
+#date: "January 9, 2019"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+First, we're going to have a couple of packages handy to get started:
+
+```{r prep}
+library(here); library(haven); library(tidyverse); library(readr)
+
+```
+
+We need the [haven package](https://cran.r-project.org/web/packages/haven/index.html) to read in the data. The data is stored in a .sav file (for SPSS) and the haven package allows us to read it into R:
+
+```{r read in}
+data <- read_sav(here::here("Sexuality IAT.public.2017.sav"))
+```
+
+You can download the 2017 Sexuality IAT .sav file [here](https://osf.io/ctqxo/). First, let's make the data a tibble (see [here](https://tibble.tidyverse.org/) for details on tibbles).
+
+```{r make tibble}
+data <- as_tibble(data)
+```
+
+Now, let's get a sense of the data:
+
+```{r basic info}
+data
+```
+
+Ok, so we have have lots of information about each session completed during 2017 (e.g., the date and time of the session). However, lets just select two variables that we'll use for the tutorial: `D_biep.Straight_Good_all` and `adoptchild`.
+
+```{r subset}
+lr <- dplyr::select(data,D_biep.Straight_Good_all,adoptchild) 
+lr
+```
+
+`D_biep.Straight_Good_all` is each person's score on the Sexuality IAT and `adoptchild` is a self-reported answer to the question "*Do you think it should be legal for same-sex partners to adopt a child?*" with answers ranging from 1 = "*Should be legal*"; 2 = "*Should not be legal*"; 3 = "*No opinion*" (and of course there are respondents that didn't see this question or chose not to answer it).
+
+Ok, so now let's do some recoding: 
+
+```{r recoding}
+lr <- lr %>% 
+  mutate(adoptchild = as.integer(adoptchild)) %>% 
+  mutate(Allowed = recode(adoptchild, `1` = 1, `2` = 0),
+         D.z  = (D_biep.Straight_Good_all - mean(D_biep.Straight_Good_all,na.rm = TRUE))/sd(D_biep.Straight_Good_all,na.rm=TRUE)
+              )
+lr
+```
+
+First, the code above ensures that `adoptchild` only takes on integer values. Next, we'll make a new variable called `Allowed`. This variable simply takes the `adoptchild` variable and (a) re-assigns all values of "2" to be "0" and (b) implicitly re-assigns all values of "3" to be missing. In other words, we're only focusing on respondents that had a clear opinion about whether same-sex partners should be able to adopt a child. The code above also standardizes (i.e., subtracts off the mean and divides by the standard deviation) IAT scores, creating a new variable called `D.z`.
+
+Next, let's look at the correlation between our two newly created variables:
+
+```{r full correlation}
+cor.test(lr$Allowed,lr$D_biep.Straight_Good_all)
+```
+
+The variables are negatively correlated at about .20. 
+
+You'll notice that the correlation above uses data from over 200,000 people. One potential downfall of a Bayesian approach is that it's computationally intensive. Thus, let's take a subset of data to work with. A draw of 5,000 sessions should be plenty:
+
+```{r subsample}
+set.seed(123) # Makes results reproducible
+lrsmall <-  sample_n(lr, 5000, replace = FALSE)
+lrsmall
+```
+
+Let's do a quick check to make sure the correlation between `Allowed` and `D.z` is negative in this subset of data:
+
+```{r small correlation}
+cor.test(lrsmall$Allowed,lrsmall$D.z)
+```
+
+Get variables want:
+
+```{r lrsmall select}
+lrmall <- lrsmall %>%
+  select(Allowed, D.z)
+```
+
+and write out .csv file:
+
+```{r csv write}
+readr::write_csv(lrsmall,path = here::here("lrsmall.csv"),col_names = TRUE)
+```
+
+Ok, so we now have a small subset of data to use for a logistic regression tutorial.
